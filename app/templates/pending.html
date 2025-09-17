@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetaCash - Pending Approval</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Auto-refresh every 5 seconds -->
+  <meta http-equiv="refresh" content="5">
+  <style>
+    body {
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      max-width: 600px;
+      margin-top: 100px;
+      background: rgba(255,255,255,0.1);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+    }
+    h2 {
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 1.2rem;
+    }
+    .btn-custom {
+      background-color: #ffcc00;
+      color: #000;
+      font-weight: bold;
+      padding: 10px 25px;
+      border-radius: 25px;
+      margin-top: 20px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-custom:hover {
+      background-color: #e6b800;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <h2>Payment Pending Approval</h2>
+    <p>Thank you for submitting your MPESA payment. Your account is under review by our admin team.</p>
+    <p>This page will automatically refresh. Once your payment is approved, you will be redirected to your dashboard.</p>
+    <a href="/" class="btn-custom">Back to Home</a>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

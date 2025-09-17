@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bonus - MetaCash</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .bonus-container {
+      max-width: 600px;
+      margin: 100px auto;
+      background: rgba(255,255,255,0.15);
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0px 8px 25px rgba(0,0,0,0.3);
+      text-align: center;
+      animation: fadeIn 1s ease-in-out;
+    }
+    .bonus-container h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    .bonus-message {
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+    .btn-custom {
+      display: inline-block;
+      margin-top: 25px;
+      background-color: #ffcc00;
+      color: #000;
+      font-weight: bold;
+      padding: 12px 30px;
+      border-radius: 30px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+    .btn-custom:hover {
+      background-color: #e6b800;
+      color: #fff;
+      transform: translateY(-2px);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bonus-container">
+    <h2>🎁 Bonus</h2>
+    <p class="bonus-message">{{ bonus_message }}</p>
+    <a href="{{ url_for('user.dashboard') }}" class="btn-custom">⬅ Back to Dashboard</a>
+  </div>
+</body>
+</html>
