@@ -4,6 +4,7 @@ from flask_login import login_required, current_user, login_user, logout_user
 from werkzeug.security import check_password_hash
 from functools import wraps
 from app.models import User, Payment, Withdrawal, db
+from datetime import datetime
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
 
@@ -45,7 +46,8 @@ def admin_login():
 
     return render_template('admin_login.html')
 
-# ---------------- Admin Dashboard ----------------
+
+
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -53,7 +55,6 @@ def admin_dashboard():
     users = User.query.all()
     pending_payments = Payment.query.filter_by(status='pending').order_by(Payment.id.desc()).all()
     pending_withdrawals = Withdrawal.query.filter_by(status='pending').order_by(Withdrawal.id.desc()).all()
-
     total_earnings = sum(p.amount for p in Payment.query.filter_by(status='approved').all())
     total_withdrawn = sum(w.amount for w in Withdrawal.query.filter_by(status='approved').all())
 
@@ -64,8 +65,10 @@ def admin_dashboard():
         pending_withdrawals=pending_withdrawals,
         total_users=len(users),
         total_earnings=total_earnings,
-        total_withdrawn=total_withdrawn
+        total_withdrawn=total_withdrawn,
+        datetime=datetime  # <-- pass datetime here
     )
+
 
 # ---------------- View Single User ----------------
 @admin_bp.route('/user/<int:user_id>', methods=['GET'])

@@ -1,7 +1,9 @@
+import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from config import DevelopmentConfig, ProductionConfig
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -9,8 +11,12 @@ migrate = Migrate()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///metacash.db'
-    app.config['SECRET_KEY'] = 'your-secret-key'
+
+    # Choose config based on ENV variable
+    if os.getenv("FLASK_ENV") == "production":
+        app.config.from_object(ProductionConfig)
+    else:
+        app.config.from_object(DevelopmentConfig)
 
     # Initialize extensions
     db.init_app(app)
@@ -23,14 +29,14 @@ def create_app():
     from app.routes.admin_routes import admin_bp
 
     # Flask-Login setup
-    login_manager.login_view = 'user.login'
+    login_manager.login_view = "user.login"
 
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
 
     # Register blueprints
-    app.register_blueprint(user_bp)        # user routes
-    app.register_blueprint(admin_bp)       # admin routes already have /admin prefix
+    app.register_blueprint(user_bp)
+    app.register_blueprint(admin_bp)
 
     return app

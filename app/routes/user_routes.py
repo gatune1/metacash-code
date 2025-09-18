@@ -9,6 +9,12 @@ import json
 # ---------------- Blueprint ----------------
 user_bp = Blueprint('user', __name__)
 
+# ---------------- Welcome Page ----------------
+@user_bp.route('/')
+def welcome():
+    return render_template('welcome.html')
+
+
 # ---------------- Signup ----------------
 @user_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -23,11 +29,17 @@ def signup():
             flash("Please fill in all fields.", "danger")
             return redirect(url_for('user.signup'))
 
-        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
-        if existing_user:
-            flash("Username or email already exists.", "danger")
+        # Check for duplicate username
+        if User.query.filter_by(username=username).first():
+            flash("⚠️ Username already exists. Please choose another.", "danger")
             return redirect(url_for('user.signup'))
 
+        # Check for duplicate email
+        if User.query.filter_by(email=email).first():
+            flash("⚠️ Email already exists. Please use another.", "danger")
+            return redirect(url_for('user.signup'))
+
+        # Handle referral
         ref_username = request.form.get('ref')
         ref_user = User.query.filter_by(username=ref_username).first() if ref_username else None
 
@@ -45,10 +57,11 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
 
-        flash("Account created successfully! Please login.", "success")
+        flash("🎉 Account created successfully! Please login.", "success")
         return redirect(url_for('user.login'))
 
     return render_template('signup.html')
+
 
 
 # ---------------- Login ----------------
@@ -135,14 +148,15 @@ def pending():
 @login_required
 def dashboard():
     if current_user.is_admin:
-        flash("Admins cannot access this page.", "danger")
-        return redirect(url_for('admin.dashboard'))
+        # Send admins to their dashboard
+        return redirect(url_for('admin_bp.admin_dashboard'))
 
     if current_user.status != 'active':
         flash("Your account is not active yet.", "warning")
         return redirect(url_for('user.payment') if current_user.status == 'new' else url_for('user.pending'))
 
     return render_template('dashboard.html', user=current_user)
+
 
 
 # ---------------- Profile ----------------
