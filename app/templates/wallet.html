@@ -145,6 +145,14 @@
 </head>
 <body>
   <div class="content">
+
+    <!-- Back to Dashboard Button -->
+    <div class="mb-4 text-start">
+      <a href="{{ url_for('user.dashboard') }}" class="btn btn-custom">
+        <i class="bi bi-house-door-fill"></i> Back to Dashboard
+      </a>
+    </div>
+
     <!-- Title -->
     <div class="section-title">💰 {{ user.full_name }}'s Wallet</div>
 

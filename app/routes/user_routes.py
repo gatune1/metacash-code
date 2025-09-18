@@ -368,6 +368,37 @@ def videos():
         required_referrals=required_referrals,
         user=current_user
     )
+# ---------------- WhatsApp Posts ----------------
+@user_bp.route('/whatsapp')
+@login_required
+def whatsapp():
+    user = current_user
+
+    # Count active referrals
+    active_referral_count = User.query.filter_by(referred_by=user.id, status='active').count()
+    required_referrals = 20
+    remaining = required_referrals - active_referral_count
+
+    if active_referral_count < required_referrals:
+        message = f"Hello {user.username}, you need {remaining} more active referral(s) to start posting on WhatsApp and earn 20 KSh per view. Keep referring!"
+        return render_template('whatsapp.html', message=message, can_post=False, user=user)
+
+    # Check if the user already has a WhatsApp post record
+    post = WhatsappPost.query.filter_by(user_id=user.id).first()
+    if not post:
+        # Initialize the post with e.g., 50 views allowed
+        post = WhatsappPost(user_id=user.id, total_views=50, views_left=50)
+        db.session.add(post)
+        db.session.commit()
+
+    message = "📱 Coming Soon! Each view will earn you 20 KSh."
+    return render_template(
+        'whatsapp.html',
+        message=message,
+        can_post=True,
+        views_left=post.views_left,
+        user=user
+    )
 
 # ---------------- Spin ----------------
 from flask import Blueprint, render_template, request, jsonify

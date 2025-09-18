@@ -36,7 +36,7 @@
       background: rgba(255,255,255,0.15);
       backdrop-filter: blur(5px);
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      white-space: nowrap; /* ensures single line */
+      white-space: nowrap; 
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -108,6 +108,7 @@
       <a href="{{ url_for('user.referrals') }}"><i class="bi bi-people-fill"></i> Referrals</a>
       <a href="{{ url_for('user.trivia') }}"><i class="bi bi-question-circle"></i> Trivia Questions</a>
       <a href="{{ url_for('user.videos') }}"><i class="bi bi-play-btn-fill"></i> YouTube Videos</a>
+      <a href="{{ url_for('user.whatsapp') }}"><i class="bi bi-whatsapp"></i> WhatsApp Posts</a>
       <a href="{{ url_for('user.bonus') }}"><i class="bi bi-gift-fill"></i> Bonus</a>
       <a href="{{ url_for('user.spin') }}"><i class="bi bi-arrow-clockwise"></i> Spin</a>
       <a href="{{ url_for('user.logout') }}" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</a>

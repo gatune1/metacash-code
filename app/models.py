@@ -1,4 +1,4 @@
-from . import db  # import db from __init__.py
+from . import db
 from flask_login import UserMixin
 from datetime import datetime
 
@@ -10,7 +10,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(100), unique=True, nullable=False)
     mpesa_no = db.Column(db.String(15), nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    
+
     # Referral fields
     referral_code = db.Column(db.String(50), nullable=True)
     referred_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -28,6 +28,7 @@ class User(db.Model, UserMixin):
     withdrawals = db.relationship('Withdrawal', backref='user', lazy=True)
     trivia_answers = db.relationship('TriviaAnswer', backref='user', lazy=True)
     spins = db.relationship('Spin', backref='user', lazy=True)
+    whatsapp_posts = db.relationship('WhatsAppPost', backref='user', lazy=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -94,3 +95,17 @@ class Spin(db.Model):
 
     def __repr__(self):
         return f"<Spin User {self.user_id} Stake {self.stake} Reward {self.reward}>"
+
+
+# ---------------- WhatsAppPost Model ----------------
+class WhatsAppPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    total_views = db.Column(db.Integer, default=50)
+    views_left = db.Column(db.Integer, default=50)
+    earnings_per_view = db.Column(db.Float, default=20.0)
+    total_earned = db.Column(db.Float, default=0.0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<WhatsAppPost User {self.user_id} Views left {self.views_left}>"

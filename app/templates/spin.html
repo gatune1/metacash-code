@@ -25,6 +25,7 @@ h1 {
     position: relative;
     width: 200px;
     height: 200px;
+    margin-bottom: 40px;
 }
 
 .wheel {
@@ -52,6 +53,22 @@ h1 {
     border-right: 10px solid transparent;
     border-bottom: 20px solid #f00;
 }
+
+.btn-dashboard {
+    display: inline-block;
+    padding: 12px 25px;
+    background-color: #4e54c8;
+    color: #fff;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 25px;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.btn-dashboard:hover {
+    background-color: #8f94fb;
+    transform: translateY(-3px);
+}
 </style>
 </head>
 <body>
@@ -60,5 +77,9 @@ h1 {
     <div class="pointer"></div>
     <div class="wheel"></div>
 </div>
+
+<!-- Back to Dashboard Button -->
+<a href="{{ url_for('user.dashboard') }}" class="btn-dashboard">🏠 Back to Dashboard</a>
+
 </body>
 </html>
