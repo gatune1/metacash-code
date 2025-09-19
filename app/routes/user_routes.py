@@ -2,9 +2,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, login_user, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.models import db, User, Payment, Withdrawal, TriviaAnswer, Spin
+from app.models import db, User, Payment, Withdrawal, TriviaAnswer, Spin, WhatsappPost
 import random
-import json
 
 # ---------------- Blueprint ----------------
 user_bp = Blueprint('user', __name__)
@@ -18,30 +17,29 @@ def welcome():
 # ---------------- Signup ----------------
 @user_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
+    ref_username = request.args.get('ref')  # Get referral from query param
+
     if request.method == 'POST':
         full_name = request.form.get('full_name')
         username = request.form.get('username')
         email = request.form.get('email')
         mpesa_no = request.form.get('mpesa_no')
         password = request.form.get('password')
+        form_ref = request.form.get('ref') or ref_username
 
         if not all([full_name, username, email, mpesa_no, password]):
             flash("Please fill in all fields.", "danger")
-            return redirect(url_for('user.signup'))
+            return redirect(url_for('user.signup', ref=ref_username))
 
-        # Check for duplicate username
         if User.query.filter_by(username=username).first():
-            flash("⚠️ Username already exists. Please choose another.", "danger")
-            return redirect(url_for('user.signup'))
+            flash("⚠️ Username already exists.", "danger")
+            return redirect(url_for('user.signup', ref=ref_username))
 
-        # Check for duplicate email
         if User.query.filter_by(email=email).first():
-            flash("⚠️ Email already exists. Please use another.", "danger")
-            return redirect(url_for('user.signup'))
+            flash("⚠️ Email already exists.", "danger")
+            return redirect(url_for('user.signup', ref=ref_username))
 
-        # Handle referral
-        ref_username = request.form.get('ref')
-        ref_user = User.query.filter_by(username=ref_username).first() if ref_username else None
+        ref_user = User.query.filter_by(username=form_ref).first() if form_ref else None
 
         new_user = User(
             full_name=full_name,
@@ -51,7 +49,7 @@ def signup():
             password=generate_password_hash(password),
             status='new',
             referred_by=ref_user.id if ref_user else None,
-            referrer_username=ref_username
+            referrer_username=form_ref
         )
 
         db.session.add(new_user)
@@ -60,8 +58,7 @@ def signup():
         flash("🎉 Account created successfully! Please login.", "success")
         return redirect(url_for('user.login'))
 
-    return render_template('signup.html')
-
+    return render_template('signup.html', ref=ref_username)
 
 
 # ---------------- Login ----------------
@@ -79,7 +76,6 @@ def login():
 
         if user and check_password_hash(user.password, password):
             login_user(user)
-
             if user.status == 'active':
                 return redirect(url_for('user.dashboard'))
             elif user.status == 'pending_approval':
@@ -148,7 +144,6 @@ def pending():
 @login_required
 def dashboard():
     if current_user.is_admin:
-        # Send admins to their dashboard
         return redirect(url_for('admin_bp.admin_dashboard'))
 
     if current_user.status != 'active':
@@ -158,15 +153,12 @@ def dashboard():
     return render_template('dashboard.html', user=current_user)
 
 
-
 # ---------------- Profile ----------------
 @user_bp.route('/profile')
 @login_required
 def profile():
     user = current_user
-    referrer = None
-    if user.referrer_username:
-        referrer = User.query.filter_by(username=user.referrer_username).first()
+    referrer = User.query.filter_by(username=user.referrer_username).first() if user.referrer_username else None
     return render_template('profile.html', user=user, referrer=referrer)
 
 
@@ -175,38 +167,20 @@ def profile():
 @login_required
 def wallet():
     user = current_user
-
-    # ---------------- Active user check ----------------
     if user.status != 'active':
         flash("Your account is not active yet.", "warning")
-        if user.status == 'new':
-            return redirect(url_for('user.payment'))
-        else:
-            return redirect(url_for('user.pending'))
+        return redirect(url_for('user.payment') if user.status == 'new' else url_for('user.pending'))
 
-    # ---------------- Earnings Calculation ----------------
-    # Count only referrals whose status is 'active'
+    # Earnings calculations
     active_referrals = [r for r in user.referrals if r.status == 'active']
-    referral_count = len(active_referrals)
-    referral_earnings = referral_count * 70
-
+    referral_earnings = len(active_referrals) * 70
     trivia_earnings = sum([q.earned for q in getattr(user, 'trivia_answers', [])])
-    youtube_earnings = 0  # Placeholder
-
-    # Approved withdrawals
-    total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status == 'approved'])
-
-    # Total stakes on spins
     spin_stakes = sum([s.stake for s in getattr(user, 'spins', [])])
-
-    # Total spin winnings
     spin_wins = sum([s.reward for s in getattr(user, 'spins', []) if s.reward > 0])
+    total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status == 'approved'])
+    withdrawable_balance = max(referral_earnings + trivia_earnings + spin_wins - total_approved_withdrawals - spin_stakes, 0)
 
-    # Withdrawable balance = earnings + spin wins - approved withdrawals - spin stakes
-    withdrawable_balance = referral_earnings + trivia_earnings + spin_wins - total_approved_withdrawals - spin_stakes
-    withdrawable_balance = max(withdrawable_balance, 0)
-
-    # ---------------- Handle Withdrawal ----------------
+    # Handle withdrawal
     if request.method == 'POST' and 'withdraw_amount' in request.form:
         amount = float(request.form.get('withdraw_amount', 0))
         if amount < 200:
@@ -214,20 +188,12 @@ def wallet():
         elif amount > withdrawable_balance:
             flash("Insufficient balance.", "danger")
         else:
-            new_withdrawal = Withdrawal(
-                user_id=user.id,
-                amount=amount,
-                status='pending'
-            )
-            db.session.add(new_withdrawal)
+            db.session.add(Withdrawal(user_id=user.id, amount=amount, status='pending'))
             db.session.commit()
             flash("Withdrawal request submitted! Waiting for admin approval.", "success")
             return redirect(url_for('user.wallet'))
 
-    # ---------------- Withdrawal History ----------------
     withdrawals = Withdrawal.query.filter_by(user_id=user.id).order_by(Withdrawal.id.desc()).all()
-
-    # ---------------- Total Earnings ----------------
     total_earnings = referral_earnings + trivia_earnings + spin_wins
     total_withdrawn = total_approved_withdrawals + spin_stakes
 
@@ -235,16 +201,14 @@ def wallet():
         'wallet.html',
         user=user,
         referral_earnings=referral_earnings,
-        referral_count=referral_count,
+        referral_count=len(active_referrals),
         trivia_earnings=trivia_earnings,
-        youtube_earnings=youtube_earnings,
         withdrawable_balance=withdrawable_balance,
         withdrawals=withdrawals,
         total_earnings=total_earnings,
         total_withdrawn=total_withdrawn,
         min_stake=20
     )
-
 
 
 # ---------------- Referrals ----------------
@@ -255,48 +219,31 @@ def referrals():
         flash("Your account is not active yet.", "warning")
         return redirect(url_for('user.payment'))
 
-    # Assign pending referrals to current user if they were referred by the username
-    pending_referrals = User.query.filter(
-        User.referred_by.is_(None),
-        User.username != current_user.username
-    ).all()
-
+    # Assign pending referrals safely
+    pending_referrals = User.query.filter(User.referred_by.is_(None), User.username != current_user.username).all()
     for u in pending_referrals:
-        if hasattr(u, 'referrer_username') and u.referrer_username == current_user.username:
+        if getattr(u, 'referrer_username', None) == current_user.username:
             u.referred_by = current_user.id
     db.session.commit()
 
-    # Get all referrals for current user
     referrals_list = User.query.filter_by(referred_by=current_user.id).order_by(User.id.desc()).all()
-
-    # Only active referrals contribute to earnings
-    active_referrals = [r for r in referrals_list if r.status == 'active']
-    active_referrals_count = len(active_referrals)
-    referral_earnings = active_referrals_count * 70  # KSh 70 per active referral
-
-    # Generate referral link
+    active_referrals_count = sum(1 for r in referrals_list if r.status == 'active')
+    referral_earnings = active_referrals_count * 70
     referral_link = url_for('user.signup', _external=True) + f"?ref={current_user.username}"
 
-    # Return JSON for AJAX requests
     if request.args.get('ajax'):
         return jsonify({
-            "referrals": [
-                {"username": r.username, "full_name": r.full_name, "status": r.status}
-                for r in referrals_list
-            ],
+            "referrals": [{"username": r.username, "full_name": r.full_name, "status": r.status} for r in referrals_list],
             "active_referrals_count": active_referrals_count,
             "referral_earnings": referral_earnings
         })
 
-    # Render template
-    return render_template(
-        'referral.html',
-        referrals=referrals_list,
-        referral_link=referral_link,
-        user=current_user,
-        active_referrals_count=active_referrals_count,
-        referral_earnings=referral_earnings
-    )
+    return render_template('referral.html', referrals=referrals_list, referral_link=referral_link,
+                           user=current_user, active_referrals_count=active_referrals_count,
+                           referral_earnings=referral_earnings)
+
+# ---------------- Trivia, Videos, WhatsApp, Spin, Bonus ----------------
+# (Keep existing implementations; they are production-safe as is)
 
 # ---------------- Trivia Questions ----------------
 @user_bp.route('/trivia', methods=['GET', 'POST'])
