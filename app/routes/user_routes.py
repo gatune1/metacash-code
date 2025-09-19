@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, login_user, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from app.models import db, User, Payment, Withdrawal, TriviaAnswer, Spin
+from app.models import db, User, Payment, Withdrawal, TriviaAnswer, Spin, WhatsAppPost
 import random
 import json
 
