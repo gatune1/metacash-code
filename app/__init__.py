@@ -1,3 +1,31 @@
+import os
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_migrate import Migrate
+
+# ---------------- Extensions ----------------
+db = SQLAlchemy()
+login_manager = LoginManager()
+migrate = Migrate()
+
+# ---------------- Config ----------------
+class Config:
+    DEBUG = False
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "DATABASE_URL",
+        "postgresql://metacash_user:lt4HPKba6kEuk8RdaXDLFKY906jXUxue@dpg-d36ca3jipnbc7392488g-a.oregon-postgres.render.com/metacash"
+    )
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+
+class ProductionConfig(Config):
+    DEBUG = False
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -35,14 +63,14 @@ def create_app():
             output.append(f"{rule} -> {rule.endpoint}")
         return "<pre>" + "\n".join(sorted(output)) + "</pre>"
 
-    # ---------------- Temporary DB Test Route ----------------
+    # ---------------- Temporary DB test route ----------------
     @app.route("/test-db")
     def test_db():
         try:
-            # Try querying users
-            users = User.query.all()
-            return f"Database Connected! Found {len(users)} users."
+            # Simple query to test DB connection
+            user_count = User.query.count()
+            return f"Database connection OK! User table has {user_count} entries."
         except Exception as e:
-            return f"Database Error: {str(e)}"
+            return f"Database connection FAILED: {e}"
 
     return app
