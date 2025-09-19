@@ -1,20 +1,12 @@
 # Python
-__pycache__/
 *.pyc
-*.pyo
-*.pyd
+__pycache__/
+
+# SQLite local database
+metacash.db
+
+# Instance folder (if used)
+instance/
 
 # Virtual environment
 venv/
-env/
-
-# Database files
-*.db
-*.sqlite3
-
-# Flask instance folder
-instance/
-
-# IDE files
-.vscode/
-.idea/
