@@ -1,3 +1,5 @@
-DATABASE_URL=postgresql://metacash_user:lt4HPKba6kEuk8RdaXDLFKY906jXUxue@dpg-d36ca3jipnbc7392488g-a:5432/metacash
-SECRET_KEY=your-strong-secret-key
-FLASK_ENV=production
+SECRET_KEY=4ac1c2158f6415f5935623538d110f426d5dd511c52b6fdff67ea0f2cb3c69a8
+FLASK_ENV=development
+DATABASE_URL=postgresql://metacash_user:lt4HPKba6kEuk8RdaXDLFKY906jXUxue@dpg-d36ca3jipnbc7392488g-a/metacash
+PORT=5000
+HOST=0.0.0.0
