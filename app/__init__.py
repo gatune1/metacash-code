@@ -12,7 +12,7 @@ migrate = Migrate()
 def create_app():
     app = Flask(__name__)
 
-    # Choose config based on ENV variable
+    # Config based on environment
     if os.getenv("FLASK_ENV") == "production":
         app.config.from_object(ProductionConfig)
     else:
@@ -36,7 +36,7 @@ def create_app():
         return User.query.get(int(user_id))
 
     # Register blueprints
-    app.register_blueprint(user_bp)
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(user_bp, url_prefix="/user")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
     return app
