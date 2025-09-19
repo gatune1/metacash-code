@@ -1,10 +1,13 @@
-from app import create_app
 import os
+from app import create_app
 
 app = create_app()
 
-# Print DATABASE_URL to check which DB is being used
-print("DATABASE_URL being used:", os.getenv("DATABASE_URL"))
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Print at runtime to ensure environment variables are loaded
+    print("DATABASE_URL at runtime:", os.getenv("DATABASE_URL"))
+    app.run(
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", 5000)),
+        debug=False  # turn off debug in production
+    )
