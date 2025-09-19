@@ -3,7 +3,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from config import DevelopmentConfig, ProductionConfig
 
 # ---------------- Extensions ----------------
 db = SQLAlchemy()
@@ -14,10 +13,17 @@ def create_app():
     app = Flask(__name__)
 
     # ---------------- Config ----------------
-    if os.getenv("FLASK_ENV") == "production":
-        app.config.from_object(ProductionConfig)
+    # Use live Postgres if DATABASE_URL exists, else fallback to local SQLite
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+        app.config["DEBUG"] = False
     else:
-        app.config.from_object(DevelopmentConfig)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///metacash.db"
+        app.config["DEBUG"] = True
+
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
 
     # ---------------- Initialize Extensions ----------------
     db.init_app(app)
@@ -37,13 +43,12 @@ def create_app():
         return User.query.get(int(user_id))
 
     # ---------------- Register Blueprints ----------------
-    app.register_blueprint(user_bp)   # no prefix
-    app.register_blueprint(admin_bp)  # admin routes stay under /admin
+    app.register_blueprint(user_bp, url_prefix="/user")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
-    # ---------------- Optional: List all routes for debugging ----------------
+    # ---------------- Optional: Debug - list all routes ----------------
     @app.route("/routes")
     def list_routes():
-        import urllib
         output = []
         for rule in app.url_map.iter_rules():
             methods = ','.join(rule.methods)
