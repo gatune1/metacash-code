@@ -145,6 +145,10 @@ def profile():
     return render_template('profile.html', user=current_user, referrer=referrer)
 
 
+
+
+
+
 # ---------------- Wallet ----------------
 @user_bp.route('/wallet', methods=['GET', 'POST'])
 @login_required
@@ -154,14 +158,36 @@ def wallet():
         return redirect(url_for('user.payment') if current_user.status=='new' else url_for('user.pending'))
 
     user = current_user
+
+    # ---------------- Earnings ----------------
     active_referrals = [r for r in user.referrals if r.status=='active']
-    referral_earnings = len(active_referrals) * 70
-    trivia_earnings = sum([t.earned for t in getattr(user,'trivia_answers',[])])
+    referral_earnings_dynamic = len(active_referrals) * 70
+    referral_earnings = referral_earnings_dynamic + user.referral_balance  # include manual balance
+
+    trivia_earnings_dynamic = sum([t.earned for t in getattr(user,'trivia_answers',[])])
+    trivia_earnings = trivia_earnings_dynamic + user.trivia_balance  # include manual balance
+
+    youtube_earnings = user.youtube_balance  # admin added
+
     spin_stakes = sum([s.stake for s in getattr(user,'spins',[])])
     spin_wins = sum([s.reward for s in getattr(user,'spins',[]) if s.reward>0])
-    total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status=='approved'])
-    withdrawable_balance = max(referral_earnings + trivia_earnings + spin_wins - total_approved_withdrawals - spin_stakes, 0)
 
+    # WhatsApp post earnings
+    whatsapp_post = WhatsAppPost.query.filter_by(user_id=user.id).first()
+    whatsapp_earnings_dynamic = 0
+    if whatsapp_post:
+        total_whatsapp_views = whatsapp_post.total_views - whatsapp_post.views_left
+        whatsapp_earnings_dynamic = total_whatsapp_views * 20  # 20 KSh per view
+    whatsapp_earnings = whatsapp_earnings_dynamic + user.whatsapp_balance  # include manual balance
+
+    # Withdrawals
+    total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status=='approved'])
+
+    # ---------------- Balances ----------------
+    total_earnings = referral_earnings + trivia_earnings + youtube_earnings + whatsapp_earnings + spin_wins
+    withdrawable_balance = max(total_earnings - total_approved_withdrawals - spin_stakes, 0)
+
+    # Handle withdrawal request
     if request.method=='POST' and 'withdraw_amount' in request.form:
         amount = float(request.form.get('withdraw_amount',0))
         if amount<200:
@@ -175,8 +201,6 @@ def wallet():
             return redirect(url_for('user.wallet'))
 
     withdrawals = Withdrawal.query.filter_by(user_id=user.id).order_by(Withdrawal.id.desc()).all()
-    total_earnings = referral_earnings + trivia_earnings + spin_wins
-    total_withdrawn = total_approved_withdrawals + spin_stakes
 
     return render_template(
         'wallet.html',
@@ -184,10 +208,12 @@ def wallet():
         referral_earnings=referral_earnings,
         referral_count=len(active_referrals),
         trivia_earnings=trivia_earnings,
+        youtube_earnings=youtube_earnings,
+        whatsapp_earnings=whatsapp_earnings,
         withdrawable_balance=withdrawable_balance,
         withdrawals=withdrawals,
         total_earnings=total_earnings,
-        total_withdrawn=total_withdrawn,
+        total_withdrawn=total_approved_withdrawals + spin_stakes,
         min_stake=20
     )
 

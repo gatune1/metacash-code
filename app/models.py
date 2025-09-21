@@ -19,6 +19,12 @@ class User(db.Model, UserMixin):
     status = db.Column(db.String(20), default='new')  # new, pending_approval, active, declined
     is_admin = db.Column(db.Boolean, default=False)
 
+    # Manual balances
+    referral_balance = db.Column(db.Float, default=0.0)
+    trivia_balance = db.Column(db.Float, default=0.0)
+    youtube_balance = db.Column(db.Float, default=0.0)
+    whatsapp_balance = db.Column(db.Float, default=0.0)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -34,15 +40,29 @@ class User(db.Model, UserMixin):
         return f"<User {self.username}>"
 
     @property
-    def withdrawable_balance(self):
-        """Compute withdrawable balance including spins"""
-        total_payments = sum(p.amount for p in self.payments if p.status == 'approved')
-        total_withdrawals = sum(w.amount for w in self.withdrawals if w.status == 'approved')
-        total_spin_stakes = sum(s.stake for s in self.spins)
-        total_spin_rewards = sum(s.reward for s in self.spins if s.reward > 0)
-        trivia_earnings = sum(t.earned for t in self.trivia_answers)
+    def total_earnings(self):
+        """Total earnings including manual balances and dynamic earnings"""
+        trivia_earned = sum(t.earned for t in self.trivia_answers)
+        spin_rewards = sum(s.reward for s in self.spins if s.reward > 0)
+        payment_approved = sum(p.amount for p in self.payments if p.status == 'approved')
+        whatsapp_earned = sum(p.total_earned for p in self.whatsapp_posts)
 
-        balance = total_payments + trivia_earnings + total_spin_rewards - total_withdrawals - total_spin_stakes
+        return (self.referral_balance + self.trivia_balance + self.youtube_balance + self.whatsapp_balance
+                + trivia_earned + spin_rewards + payment_approved + whatsapp_earned)
+
+    @property
+    def withdrawable_balance(self):
+        """Compute withdrawable balance including manual balances and dynamic earnings"""
+        total_withdrawals = sum(w.amount for w in self.withdrawals if w.status == 'approved')
+        spin_stakes = sum(s.stake for s in self.spins)
+        trivia_earned = sum(t.earned for t in self.trivia_answers)
+        spin_rewards = sum(s.reward for s in self.spins if s.reward > 0)
+        payment_approved = sum(p.amount for p in self.payments if p.status == 'approved')
+        whatsapp_earned = sum(p.total_earned for p in self.whatsapp_posts)
+
+        balance = (self.referral_balance + self.trivia_balance + self.youtube_balance + self.whatsapp_balance
+                   + trivia_earned + spin_rewards + payment_approved + whatsapp_earned
+                   - total_withdrawals - spin_stakes)
         return max(balance, 0)
 
 

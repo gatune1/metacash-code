@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user, login_user, logout_user
 from werkzeug.security import check_password_hash
 from functools import wraps
-from app.models import User, Payment, Withdrawal, db
+from app.models import User, Payment, Withdrawal, TriviaAnswer, WhatsAppPost, Spin, db
 from datetime import datetime
 
 admin_bp = Blueprint('admin_bp', __name__, url_prefix='/admin')
@@ -46,8 +46,7 @@ def admin_login():
 
     return render_template('admin_login.html')
 
-
-
+# ---------------- Admin Dashboard ----------------
 @admin_bp.route('/dashboard')
 @login_required
 @admin_required
@@ -66,61 +65,80 @@ def admin_dashboard():
         total_users=len(users),
         total_earnings=total_earnings,
         total_withdrawn=total_withdrawn,
-        datetime=datetime  # <-- pass datetime here
+        datetime=datetime
     )
 
-
-# ---------------- View Single User ----------------
-@admin_bp.route('/user/<int:user_id>', methods=['GET'])
+# ---------------- View & Edit Single User ----------------
+@admin_bp.route('/user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def admin_user_view(user_id):
     user = User.query.get_or_404(user_id)
 
-    referral_count = user.referrals.count()
-    referral_earnings = referral_count * 70
-    trivia_earnings = sum(q.earned for q in getattr(user, 'trivia_answers', []))
-    spin_stakes = sum(s.stake for s in getattr(user, 'spins', []))
-    spin_wins = sum(s.reward for s in getattr(user, 'spins', []) if s.reward > 0)
-    total_approved_withdrawals = sum(w.amount for w in user.withdrawals if w.status == 'approved')
+    if request.method == 'POST':
+        # Update balances from form
+        user.referral_balance = request.form.get('referral_balance', type=float) or 0
+        user.trivia_balance = request.form.get('trivia_balance', type=float) or 0
+        user.youtube_balance = request.form.get('youtube_balance', type=float) or 0
+        user.whatsapp_balance = request.form.get('whatsapp_balance', type=float) or 0
 
-    withdrawable_balance = referral_earnings + trivia_earnings + spin_wins - total_approved_withdrawals - spin_stakes
-    withdrawable_balance = max(withdrawable_balance, 0)
+        db.session.commit()
+        flash(f"{user.username}'s wallet updated successfully.", "success")
+        return redirect(url_for('admin_bp.admin_user_view', user_id=user.id))
+
+    # ---------------- Wallet Calculations ----------------
+    active_referrals = [r for r in user.referrals if r.status=='active']
+    referral_earnings_dynamic = len(active_referrals) * 70  # Adjust per referral logic
+
+    trivia_earnings_dynamic = sum([t.earned for t in getattr(user, 'trivia_answers', [])])
+    spin_stakes = sum([s.stake for s in getattr(user, 'spins', [])])
+    spin_wins = sum([s.reward for s in getattr(user, 'spins', []) if s.reward > 0])
+
+    # WhatsApp earnings
+    whatsapp_earnings_dynamic = sum([w.total_earned for w in getattr(user, 'whatsapp_posts', [])])
+
+    # Total approved withdrawals
+    total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status=='approved'])
+
+    # Total wallet and withdrawable balance
+    total_wallet = (
+        user.referral_balance + user.trivia_balance + user.youtube_balance + user.whatsapp_balance +
+        referral_earnings_dynamic + trivia_earnings_dynamic + spin_wins + whatsapp_earnings_dynamic
+    )
+    withdrawable_balance = max(total_wallet - total_approved_withdrawals - spin_stakes, 0)
 
     withdrawals = Withdrawal.query.filter_by(user_id=user.id).order_by(Withdrawal.id.desc()).all()
     payments = Payment.query.filter_by(user_id=user.id).order_by(Payment.id.desc()).all()
 
-    total_earnings = referral_earnings + trivia_earnings + spin_wins
-    total_withdrawn = total_approved_withdrawals + spin_stakes
-
     return render_template(
         'admin_user_view.html',
         user=user,
-        referral_earnings=referral_earnings,
-        referral_count=referral_count,
-        trivia_earnings=trivia_earnings,
+        referral_count=len(active_referrals),
+        referral_earnings_dynamic=referral_earnings_dynamic,
+        trivia_earnings_dynamic=trivia_earnings_dynamic,
+        whatsapp_earnings_dynamic=whatsapp_earnings_dynamic,
+        spin_stakes=spin_stakes,
+        spin_wins=spin_wins,
+        total_withdrawn=total_approved_withdrawals + spin_stakes,
+        total_wallet=total_wallet,
         withdrawable_balance=withdrawable_balance,
         withdrawals=withdrawals,
-        payments=payments,
-        total_earnings=total_earnings,
-        total_withdrawn=total_withdrawn
+        payments=payments
     )
 
-# ---------------- Approve Payment ----------------
+# ---------------- Approve / Decline Payments ----------------
 @admin_bp.route('/payment/approve/<int:payment_id>')
 @login_required
 @admin_required
 def approve_payment(payment_id):
     payment = Payment.query.get_or_404(payment_id)
     payment.status = 'approved'
-    user = payment.user
-    if user.status != 'active':
-        user.status = 'active'
+    if payment.user.status != 'active':
+        payment.user.status = 'active'
     db.session.commit()
-    flash(f"Payment {payment.id} approved. User '{user.username}' is now active.", "success")
+    flash(f"Payment {payment.id} approved.", "success")
     return redirect(url_for('admin_bp.admin_dashboard'))
 
-# ---------------- Decline Payment ----------------
 @admin_bp.route('/payment/decline/<int:payment_id>')
 @login_required
 @admin_required
@@ -131,7 +149,7 @@ def decline_payment(payment_id):
     flash(f"Payment {payment.id} declined.", "warning")
     return redirect(url_for('admin_bp.admin_dashboard'))
 
-# ---------------- Approve Withdrawal ----------------
+# ---------------- Approve / Decline Withdrawals ----------------
 @admin_bp.route('/withdrawal/approve/<int:withdrawal_id>')
 @login_required
 @admin_required
@@ -142,7 +160,6 @@ def approve_withdrawal(withdrawal_id):
     flash(f"Withdrawal {withdrawal.id} approved.", "success")
     return redirect(url_for('admin_bp.admin_dashboard'))
 
-# ---------------- Decline Withdrawal ----------------
 @admin_bp.route('/withdrawal/decline/<int:withdrawal_id>')
 @login_required
 @admin_required
