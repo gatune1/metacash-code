@@ -1,3 +1,4 @@
+
 from . import db
 from flask_login import UserMixin
 from datetime import datetime
@@ -25,6 +26,12 @@ class User(db.Model, UserMixin):
     youtube_balance = db.Column(db.Float, default=0.0)
     whatsapp_balance = db.Column(db.Float, default=0.0)
 
+    # Today's manual earnings (reset daily)
+    referral_today_manual = db.Column(db.Float, default=0.0)
+    trivia_today_manual = db.Column(db.Float, default=0.0)
+    youtube_today_manual = db.Column(db.Float, default=0.0)
+    whatsapp_today_manual = db.Column(db.Float, default=0.0)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -41,7 +48,7 @@ class User(db.Model, UserMixin):
 
     @property
     def total_earnings(self):
-        """Total earnings including manual balances and dynamic earnings"""
+        """Total earnings including manual balances, dynamic earnings, and spins"""
         trivia_earned = sum(t.earned for t in self.trivia_answers)
         spin_rewards = sum(s.reward for s in self.spins if s.reward > 0)
         payment_approved = sum(p.amount for p in self.payments if p.status == 'approved')

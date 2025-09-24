@@ -1,3 +1,4 @@
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, login_user, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -150,6 +151,11 @@ def profile():
 
 
 # ---------------- Wallet ----------------
+from datetime import date
+from flask_login import login_required, current_user
+from flask import flash, redirect, url_for, request, render_template
+from app.models import User, Withdrawal, WhatsAppPost, db
+
 @user_bp.route('/wallet', methods=['GET', 'POST'])
 @login_required
 def wallet():
@@ -158,41 +164,57 @@ def wallet():
         return redirect(url_for('user.payment') if current_user.status=='new' else url_for('user.pending'))
 
     user = current_user
+    today = date.today()
 
-    # ---------------- Earnings ----------------
-    active_referrals = [r for r in user.referrals if r.status=='active']
-    referral_earnings_dynamic = len(active_referrals) * 70
-    referral_earnings = referral_earnings_dynamic + user.referral_balance  # include manual balance
+    # ---------------- Referrals ----------------
+    active_referrals = [r for r in user.referrals if r.status == 'active']
+    referral_dynamic_total = len(active_referrals) * 70
+    referral_dynamic_today = sum(70 for r in active_referrals if getattr(r, 'created_at', today) and r.created_at.date() == today)
+    referral_today_manual = getattr(user, 'referral_today_manual', 0)
+    referral_today_earnings = referral_dynamic_today + referral_today_manual
+    referral_total = referral_dynamic_total + user.referral_balance
 
-    trivia_earnings_dynamic = sum([t.earned for t in getattr(user,'trivia_answers',[])])
-    trivia_earnings = trivia_earnings_dynamic + user.trivia_balance  # include manual balance
+    # ---------------- Trivia ----------------
+    trivia_answers = getattr(user, 'trivia_answers', [])
+    trivia_dynamic_total = sum([t.earned for t in trivia_answers])
+    trivia_dynamic_today = sum([t.earned for t in trivia_answers if t.created_at.date() == today])
+    trivia_today_manual = getattr(user, 'trivia_today_manual', 0)
+    trivia_today_earnings = trivia_dynamic_today + trivia_today_manual
+    trivia_total = trivia_dynamic_total + user.trivia_balance
 
-    youtube_earnings = user.youtube_balance  # admin added
+    # ---------------- YouTube ----------------
+    youtube_total = user.youtube_balance
+    youtube_today_manual = getattr(user, 'youtube_today_manual', 0)
+    youtube_today_earnings = youtube_today_manual
 
-    spin_stakes = sum([s.stake for s in getattr(user,'spins',[])])
-    spin_wins = sum([s.reward for s in getattr(user,'spins',[]) if s.reward>0])
+    # ---------------- Spins ----------------
+    spins = getattr(user, 'spins', [])
+    spin_stakes = sum([s.stake for s in spins])
+    spin_wins_total = sum([s.reward for s in spins if s.reward > 0])
+    spin_wins_today = sum([s.reward for s in spins if s.reward > 0 and s.created_at.date() == today])
 
-    # WhatsApp post earnings
-    whatsapp_post = WhatsAppPost.query.filter_by(user_id=user.id).first()
-    whatsapp_earnings_dynamic = 0
-    if whatsapp_post:
-        total_whatsapp_views = whatsapp_post.total_views - whatsapp_post.views_left
-        whatsapp_earnings_dynamic = total_whatsapp_views * 20  # 20 KSh per view
-    whatsapp_earnings = whatsapp_earnings_dynamic + user.whatsapp_balance  # include manual balance
+    # ---------------- WhatsApp ----------------
+    whatsapp_posts = getattr(user, 'whatsapp_posts', [])
+    whatsapp_dynamic_total = sum([(p.total_views - p.views_left) * p.earnings_per_view for p in whatsapp_posts])
+    whatsapp_dynamic_today = sum([
+        (p.total_views - p.views_left) * p.earnings_per_view for p in whatsapp_posts if p.created_at.date() == today
+    ])
+    whatsapp_today_manual = getattr(user, 'whatsapp_today_manual', 0)
+    whatsapp_today_earnings = whatsapp_dynamic_today + whatsapp_today_manual
+    whatsapp_total = whatsapp_dynamic_total + user.whatsapp_balance
 
-    # Withdrawals
+    # ---------------- Total Today & Withdrawals ----------------
+    total_today = referral_today_earnings + trivia_today_earnings + youtube_today_earnings + whatsapp_today_earnings + spin_wins_today
     total_approved_withdrawals = sum([w.amount for w in user.withdrawals if w.status=='approved'])
-
-    # ---------------- Balances ----------------
-    total_earnings = referral_earnings + trivia_earnings + youtube_earnings + whatsapp_earnings + spin_wins
+    total_earnings = referral_total + trivia_total + youtube_total + whatsapp_total + spin_wins_total
     withdrawable_balance = max(total_earnings - total_approved_withdrawals - spin_stakes, 0)
 
-    # Handle withdrawal request
-    if request.method=='POST' and 'withdraw_amount' in request.form:
-        amount = float(request.form.get('withdraw_amount',0))
-        if amount<200:
+    # ---------------- Handle withdrawal request ----------------
+    if request.method == 'POST' and 'withdraw_amount' in request.form:
+        amount = float(request.form.get('withdraw_amount', 0))
+        if amount < 200:
             flash("You cannot withdraw less than 200 KSh.", "danger")
-        elif amount>withdrawable_balance:
+        elif amount > withdrawable_balance:
             flash("Insufficient balance.", "danger")
         else:
             db.session.add(Withdrawal(user_id=user.id, amount=amount, status='pending'))
@@ -205,17 +227,25 @@ def wallet():
     return render_template(
         'wallet.html',
         user=user,
-        referral_earnings=referral_earnings,
+        referral_total=referral_total,
+        referral_today_earnings=referral_today_earnings,
         referral_count=len(active_referrals),
-        trivia_earnings=trivia_earnings,
-        youtube_earnings=youtube_earnings,
-        whatsapp_earnings=whatsapp_earnings,
+        trivia_total=trivia_total,
+        trivia_today_earnings=trivia_today_earnings,
+        youtube_total=youtube_total,
+        youtube_today_earnings=youtube_today_earnings,
+        spin_wins_total=spin_wins_total,
+        spin_wins_today=spin_wins_today,
+        whatsapp_total=whatsapp_total,
+        whatsapp_today_earnings=whatsapp_today_earnings,
+        total_today=total_today,
         withdrawable_balance=withdrawable_balance,
         withdrawals=withdrawals,
         total_earnings=total_earnings,
         total_withdrawn=total_approved_withdrawals + spin_stakes,
         min_stake=20
     )
+
 
 
 # ---------------- Referrals ----------------

@@ -20,68 +20,118 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('admin_bp.admin_user_view', user_id=user.id) }}">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>Balance Type</th>
-                            <th>Amount (Ksh)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Referral Balance</td>
-                            <td><input type="number" step="0.01" name="referral_balance" class="form-control" value="{{ user.referral_balance }}"></td>
-                        </tr>
-                        <tr>
-                            <td>Trivia Balance</td>
-                            <td><input type="number" step="0.01" name="trivia_balance" class="form-control" value="{{ user.trivia_balance }}"></td>
-                        </tr>
-                        <tr>
-                            <td>YouTube Balance</td>
-                            <td><input type="number" step="0.01" name="youtube_balance" class="form-control" value="{{ user.youtube_balance }}"></td>
-                        </tr>
-                        <tr>
-                            <td>WhatsApp Balance</td>
-                            <td><input type="number" step="0.01" name="whatsapp_balance" class="form-control" value="{{ user.whatsapp_balance }}"></td>
-                        </tr>
+                
+                <div class="row">
+                    <!-- Add Balances -->
+                    <div class="col-md-6">
+                        <h5 class="text-success">Add Balances</h5>
+                        <div class="mb-2">
+                            <label>Referral Balance</label>
+                            <input type="number" step="0.01" name="add_referral_balance" class="form-control" placeholder="Add Referral Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>Trivia Balance</label>
+                            <input type="number" step="0.01" name="add_trivia_balance" class="form-control" placeholder="Add Trivia Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>YouTube Balance</label>
+                            <input type="number" step="0.01" name="add_youtube_balance" class="form-control" placeholder="Add YouTube Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>WhatsApp Balance</label>
+                            <input type="number" step="0.01" name="add_whatsapp_balance" class="form-control" placeholder="Add WhatsApp Balance">
+                        </div>
+                    </div>
 
-                        <tr>
-                            <td>Referral Earnings ({{ referral_count }} referrals)</td>
-                            <td>{{ referral_earnings_dynamic }}</td>
-                        </tr>
-                        <tr>
-                            <td>Trivia Earnings (Dynamic)</td>
-                            <td>{{ trivia_earnings_dynamic }}</td>
-                        </tr>
-                        <tr>
-                            <td>WhatsApp Earnings (Dynamic)</td>
-                            <td>{{ whatsapp_earnings_dynamic }}</td>
-                        </tr>
-                        <tr>
-                            <td>Spin Wins</td>
-                            <td>{{ spin_wins }}</td>
-                        </tr>
-                        <tr>
-                            <td>Spin Stakes (Deducted)</td>
-                            <td>-{{ spin_stakes }}</td>
-                        </tr>
-                        <tr>
-                            <td>Total Withdrawals (Approved)</td>
-                            <td>-{{ total_withdrawn }}</td>
-                        </tr>
+                    <!-- Deduct Balances -->
+                    <div class="col-md-6">
+                        <h5 class="text-danger">Deduct Balances</h5>
+                        <div class="mb-2">
+                            <label>Referral Balance</label>
+                            <input type="number" step="0.01" name="deduct_referral_balance" class="form-control" placeholder="Deduct Referral Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>Trivia Balance</label>
+                            <input type="number" step="0.01" name="deduct_trivia_balance" class="form-control" placeholder="Deduct Trivia Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>YouTube Balance</label>
+                            <input type="number" step="0.01" name="deduct_youtube_balance" class="form-control" placeholder="Deduct YouTube Balance">
+                        </div>
+                        <div class="mb-2">
+                            <label>WhatsApp Balance</label>
+                            <input type="number" step="0.01" name="deduct_whatsapp_balance" class="form-control" placeholder="Deduct WhatsApp Balance">
+                        </div>
+                    </div>
+                </div>
 
-                        <tr class="table-success">
-                            <td><strong>Total Wallet</strong></td>
-                            <td><strong>{{ total_wallet }}</strong></td>
-                        </tr>
-                        <tr class="table-warning">
-                            <td><strong>Withdrawable Balance</strong></td>
-                            <td><strong>{{ withdrawable_balance }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <button type="submit" class="btn btn-success">Update Wallet Balances</button>
+                <button type="submit" class="btn btn-success mt-3">Update Wallet Balances</button>
             </form>
+
+            <hr>
+
+            <!-- Current Wallet Status -->
+            <h5>Current Wallet Summary</h5>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Balance Type</th>
+                        <th>Amount (Ksh)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Referral Balance</td>
+                        <td>{{ user.referral_balance }}</td>
+                    </tr>
+                    <tr>
+                        <td>Trivia Balance</td>
+                        <td>{{ user.trivia_balance }}</td>
+                    </tr>
+                    <tr>
+                        <td>YouTube Balance</td>
+                        <td>{{ user.youtube_balance }}</td>
+                    </tr>
+                    <tr>
+                        <td>WhatsApp Balance</td>
+                        <td>{{ user.whatsapp_balance }}</td>
+                    </tr>
+
+                    <tr>
+                        <td>Referral Earnings ({{ referral_count }} referrals)</td>
+                        <td>{{ referral_earnings_dynamic }}</td>
+                    </tr>
+                    <tr>
+                        <td>Trivia Earnings (Dynamic)</td>
+                        <td>{{ trivia_earnings_dynamic }}</td>
+                    </tr>
+                    <tr>
+                        <td>WhatsApp Earnings (Dynamic)</td>
+                        <td>{{ whatsapp_earnings_dynamic }}</td>
+                    </tr>
+                    <tr>
+                        <td>Spin Wins</td>
+                        <td>{{ spin_wins }}</td>
+                    </tr>
+                    <tr>
+                        <td>Spin Stakes (Deducted)</td>
+                        <td>-{{ spin_stakes }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Withdrawals (Approved)</td>
+                        <td>-{{ total_withdrawn }}</td>
+                    </tr>
+
+                    <tr class="table-success">
+                        <td><strong>Total Wallet</strong></td>
+                        <td><strong>{{ total_wallet }}</strong></td>
+                    </tr>
+                    <tr class="table-warning">
+                        <td><strong>Withdrawable Balance</strong></td>
+                        <td><strong>{{ withdrawable_balance }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
